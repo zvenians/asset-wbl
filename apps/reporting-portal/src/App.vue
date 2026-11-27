@@ -1,0 +1,25 @@
+<script setup lang="ts">
+import {onMounted,ref,watch} from 'vue';
+const token=ref(sessionStorage.getItem('wbl_report_token')||'');
+const email=ref(''),password=ref(''),error=ref(''),busy=ref(false),success=ref('');
+const reports=ref<any[]>([]),matches=ref<any[]>([]),assetQuery=ref(''),assetId=ref('');
+const location=ref(''),description=ref(''),urgency=ref('sedang');
+async function request(path:string,options:RequestInit={}){
+ const response=await fetch('/api/v1'+path,{...options,headers:{'Content-Type':'application/json',Authorization:'Bearer '+token.value,...options.headers}});
+ const value=await response.json();if(!response.ok)throw Error(value.error||'Permintaan gagal');return value;
+}
+async function load(){if(!token.value)return;try{reports.value=await request('/reports')}catch(e){error.value=(e as Error).message}}
+onMounted(load);
+watch(assetQuery,async q=>{if(q.length<2){matches.value=[];return}try{matches.value=await request('/reporting/assets?q='+encodeURIComponent(q))}catch{matches.value=[]}});
+async function login(){error.value='';try{const v=await request('/auth/login',{method:'POST',body:JSON.stringify({email:email.value,password:password.value})});if(v.role!=='reporter')throw Error('Gunakan akun pelapor');token.value=v.token;sessionStorage.setItem('wbl_report_token',v.token);await load()}catch(e){error.value=(e as Error).message}}
+async function submit(){busy.value=true;error.value='';success.value='';try{const v=await request('/reports',{method:'POST',body:JSON.stringify({asset_id:assetId.value||null,location:location.value,description:description.value,urgency:urgency.value})});success.value=v.id;description.value='';location.value='';assetQuery.value='';assetId.value='';await load()}catch(e){error.value=(e as Error).message}finally{busy.value=false}}
+function logout(){sessionStorage.removeItem('wbl_report_token');token.value='';reports.value=[]}
+</script>
+<template>
+ <main><header><strong>WBL <span>/ LAPOR ASET</span></strong><button v-if="token" @click="logout">Keluar</button></header>
+  <div class="wrap"><div class="intro"><small>PORTAL KARYAWAN · DATA SIMULASI</small><h1>Laporkan kerusakan aset.</h1><p>Catat lokasi dan kondisi yang Anda temukan. Tim Asset akan meninjau laporan Anda.</p></div>
+   <section v-if="!token" class="panel"><h2>Masuk</h2><form @submit.prevent="login"><label>Email<input type="email" v-model="email" required autocomplete="username"></label><label>Kata sandi<input type="password" v-model="password" required autocomplete="current-password"></label><p v-if="error" role="alert" class="error">{{error}}</p><button class="primary">Masuk ke portal</button></form></section>
+   <template v-else><section class="panel"><h2>Laporan baru</h2><p>Pilih aset bila diketahui. Anda tetap dapat melapor tanpa nomor aset.</p><form @submit.prevent="submit"><label>Cari aset<input v-model="assetQuery" placeholder="Nomor inventaris atau nama" autocomplete="off"></label><div v-if="matches.length" class="matches"><button type="button" v-for="asset in matches" :key="asset.id" @click="assetId=asset.id;assetQuery=asset.inventory_no+' · '+asset.name;matches=[]">{{asset.inventory_no}} · {{asset.name}}</button></div><p v-if="assetId" class="success">Aset dipilih: {{assetQuery}} <button type="button" @click="assetId='';assetQuery=''">Hapus</button></p><label>Lokasi kejadian<input v-model="location" required placeholder="Contoh: Pentacity, lantai 2"></label><label>Uraian kerusakan<textarea v-model="description" required minlength="10" rows="5" placeholder="Jelaskan kondisi yang terlihat"></textarea></label><label>Urgensi<select v-model="urgency"><option value="rendah">Rendah</option><option value="sedang">Sedang</option><option value="tinggi">Tinggi</option></select></label><p v-if="error" role="alert" class="error">{{error}}</p><p v-if="success" role="status" class="success">Laporan tersimpan. Nomor tiket: {{success}}</p><button class="primary" :disabled="busy">{{busy?'Menyimpan…':'Kirim laporan'}}</button></form></section><section class="history"><h2>Laporan saya</h2><p v-if="reports.length===0">Belum ada laporan.</p><article v-for="report in reports" :key="report.id"><span>{{report.status}} · {{report.urgency}}</span><h3>{{report.location}}</h3><p>{{report.description}}</p><small>{{new Date(report.created_at).toLocaleDateString('id-ID',{timeZone:'Asia/Makassar'})}}</small></article></section></template>
+  </div>
+ </main>
+</template>

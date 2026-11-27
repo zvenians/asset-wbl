@@ -1,3 +1,4 @@
+@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,600,700&f[]=switzer@400,500,600,700&display=swap');
 @import "tailwindcss";
 @theme {
   --color-canvas:#F4F2EC;--color-surface-soft:#FCFBF8;--color-surface:#FFFFFF;--color-line:#E3E0D7;--color-ink:#242820;--color-muted:#62675E;--color-primary:#526247;--color-primary-hover:#3F5136;--color-success:#28634E;--color-warning:#845918;--color-danger:#A2382D;--color-info:#355C76;
