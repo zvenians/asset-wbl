@@ -8,10 +8,12 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -24,6 +26,17 @@ import (
 type app struct{ db *pgxpool.Pool }
 type identity struct{ ID, Role string }
 type keyType int
+
+var loginAttempts = struct {
+	sync.Mutex
+	entries map[string]struct {
+		count int
+		until time.Time
+	}
+}{entries: make(map[string]struct {
+	count int
+	until time.Time
+})}
 
 const identityKey keyType = 1
 
@@ -61,6 +74,24 @@ func staff(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 func (a app) login(w http.ResponseWriter, r *http.Request) {
+	host, _, splitErr := net.SplitHostPort(r.RemoteAddr)
+	if splitErr != nil {
+		host = r.RemoteAddr
+	}
+	loginAttempts.Lock()
+	record := loginAttempts.entries[host]
+	if time.Now().After(record.until) {
+		record.count = 0
+		record.until = time.Now().Add(time.Minute)
+	}
+	if record.count >= 10 {
+		loginAttempts.Unlock()
+		fail(w, 429, "Terlalu banyak percobaan masuk; coba lagi dalam satu menit")
+		return
+	}
+	record.count++
+	loginAttempts.entries[host] = record
+	loginAttempts.Unlock()
 	var q struct{ Email, Password string }
 	if json.NewDecoder(r.Body).Decode(&q) != nil {
 		fail(w, 400, "Input tidak valid")
