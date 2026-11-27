@@ -14,4 +14,4 @@ Prasyarat: Go 1.24+, PostgreSQL 17, pnpm, dan Goose.
 4. Jalankan `cd backend && go mod tidy && go run ./cmd/api`.
 5. Jalankan `pnpm install`, `pnpm dev:workspace`, dan `pnpm dev:portal` pada terminal terpisah.
 
-Belum tersedia seed akun demo. Buat user dengan hash bcrypt sebelum login. Deployment lama di `asset-wbl.vercel.app` belum diperbarui dengan implementasi ini. API Go, worker, database, dan storage privat memerlukan hosting terpisah dari frontend statis Vercel.
+Migrasi kedua membuat akun demo lokal: `admin@demo.wbl.test` / `DemoAdmin!2026`, `staff@demo.wbl.test` / `DemoStaff!2026`, dan `reporter@demo.wbl.test` / `DemoReport!2026`. Kredensial ini hanya untuk lingkungan development. Deployment lama di `asset-wbl.vercel.app` belum diperbarui dengan implementasi ini. API Go, worker, database, dan storage privat memerlukan hosting terpisah dari frontend statis Vercel.
