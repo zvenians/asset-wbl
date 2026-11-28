@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -122,7 +123,7 @@ func (a app) dashboard(w http.ResponseWriter, r *http.Request) {
 	if !staff(w, r) {
 		return
 	}
-	var total, vehicles, openWO int
+	var total, vehicles, openWO, openReports, duePlans, dueVehicles, dueDocuments int
 	var cost string
 	err := a.db.QueryRow(r.Context(), "SELECT count(*),count(*) FILTER(WHERE c.kind='vehicle'),coalesce(sum(a.purchase_cost),0)::text FROM assets a JOIN categories c ON c.id=a.category_id WHERE a.archived_at IS NULL").Scan(&total, &vehicles, &cost)
 	if err != nil {
@@ -130,7 +131,46 @@ func (a app) dashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = a.db.QueryRow(r.Context(), "SELECT count(*) FROM work_orders WHERE status NOT IN ('selesai','ditolak')").Scan(&openWO)
-	respond(w, 200, map[string]any{"total_assets": total, "vehicles": vehicles, "open_work_orders": openWO, "purchase_cost": cost, "simulation": true})
+	_ = a.db.QueryRow(r.Context(), "SELECT count(*) FROM damage_reports WHERE status='baru'").Scan(&openReports)
+	_ = a.db.QueryRow(r.Context(), "SELECT count(*) FROM maintenance_plans WHERE active AND next_due <= (now() AT TIME ZONE 'Asia/Makassar')::date+30").Scan(&duePlans)
+	_ = a.db.QueryRow(r.Context(), "SELECT count(*) FROM vehicles WHERE annual_due <= (now() AT TIME ZONE 'Asia/Makassar')::date+30").Scan(&dueVehicles)
+	_ = a.db.QueryRow(r.Context(), "SELECT count(*) FROM documents WHERE expires_on <= (now() AT TIME ZONE 'Asia/Makassar')::date+30").Scan(&dueDocuments)
+	readGroups := func(sql string) []map[string]any {
+		rows, e := a.db.Query(r.Context(), sql)
+		if e != nil {
+			return []map[string]any{}
+		}
+		defer rows.Close()
+		out := []map[string]any{}
+		for rows.Next() {
+			var name string
+			var count int
+			if rows.Scan(&name, &count) == nil {
+				out = append(out, map[string]any{"name": name, "count": count})
+			}
+		}
+		return out
+	}
+	kinds := readGroups("SELECT c.kind,count(*) FROM assets a JOIN categories c ON c.id=a.category_id WHERE a.archived_at IS NULL GROUP BY c.kind ORDER BY count(*) DESC")
+	units := readGroups("SELECT b.name,count(*) FROM assets a JOIN business_units b ON b.id=a.unit_id WHERE a.archived_at IS NULL GROUP BY b.name ORDER BY count(*) DESC LIMIT 8")
+	conditions := readGroups("SELECT condition,count(*) FROM assets WHERE archived_at IS NULL GROUP BY condition ORDER BY count(*) DESC")
+	activity := []map[string]any{}
+	rows, e := a.db.Query(r.Context(), "SELECT action,entity_type,created_at FROM audit_log ORDER BY created_at DESC LIMIT 6")
+	if e == nil {
+		for rows.Next() {
+			var action, entity string
+			var at time.Time
+			if rows.Scan(&action, &entity, &at) == nil {
+				activity = append(activity, map[string]any{"action": action, "entity": entity, "at": at})
+			}
+		}
+		rows.Close()
+	}
+	result := map[string]any{"total_assets": total, "vehicles": vehicles, "open_work_orders": openWO, "open_reports": openReports, "due_plans": duePlans, "due_vehicles": dueVehicles, "due_documents": dueDocuments, "kinds": kinds, "units": units, "conditions": conditions, "activity": activity, "simulation": true}
+	if who(r).Role == "admin" {
+		result["purchase_cost"] = cost
+	}
+	respond(w, 200, result)
 }
 
 type assetInput struct {
@@ -159,17 +199,25 @@ func (a app) assets(w http.ResponseWriter, r *http.Request) {
 		}
 		q := r.URL.Query().Get("q")
 		kind := r.URL.Query().Get("kind")
+		locationID := r.URL.Query().Get("location_id")
+		if locationID != "" {
+			valid, _ := regexp.MatchString(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`, locationID)
+			if !valid {
+				fail(w, 422, "Lokasi tidak valid")
+				return
+			}
+		}
 		if kind != "vehicle" && kind != "property" && kind != "" {
 			fail(w, 422, "Jenis aset tidak valid")
 			return
 		}
-		filter := " FROM assets a JOIN categories c ON c.id=a.category_id JOIN business_units b ON b.id=a.unit_id WHERE a.archived_at IS NULL AND ($1='' OR a.inventory_no ILIKE '%'||$1||'%' OR a.name ILIKE '%'||$1||'%') AND ($2='' OR ($2='property' AND c.kind IN ('land','building')) OR c.kind=$2)"
+		filter := " FROM assets a JOIN categories c ON c.id=a.category_id JOIN business_units b ON b.id=a.unit_id WHERE a.archived_at IS NULL AND ($1='' OR a.inventory_no ILIKE '%'||$1||'%' OR a.name ILIKE '%'||$1||'%') AND ($2='' OR ($2='property' AND c.kind IN ('land','building')) OR c.kind=$2) AND ($3='' OR a.location_id=nullif($3,'')::uuid)"
 		var total int
-		if err := a.db.QueryRow(r.Context(), "SELECT count(*)"+filter, q, kind).Scan(&total); err != nil {
+		if err := a.db.QueryRow(r.Context(), "SELECT count(*)"+filter, q, kind, locationID).Scan(&total); err != nil {
 			fail(w, 500, "Gagal menghitung aset")
 			return
 		}
-		rows, err := a.db.Query(r.Context(), "SELECT a.id,a.inventory_no,a.name,c.name,c.kind,b.name,a.condition,a.usage_status"+filter+" ORDER BY a.created_at DESC LIMIT 25 OFFSET $3", q, kind, (page-1)*25)
+		rows, err := a.db.Query(r.Context(), "SELECT a.id,a.inventory_no,a.name,c.name,c.kind,b.name,a.condition,a.usage_status"+filter+" ORDER BY a.created_at DESC LIMIT 25 OFFSET $4", q, kind, locationID, (page-1)*25)
 		if err != nil {
 			fail(w, 500, "Gagal memuat aset")
 			return

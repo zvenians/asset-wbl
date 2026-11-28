@@ -1,1 +1,1 @@
-{"name":"@wbl/design-tokens","version":"0.1.0","private":true,"exports":{"./style.css":"./style.css"}}
+{"name":"@wbl/design-tokens","version":"0.1.0","private":true,"exports":{"./style.css":"./style.css"},"dependencies":{"@fontsource-variable/geist":"^5.3.0","@fontsource-variable/geist-mono":"^5.3.0"}}

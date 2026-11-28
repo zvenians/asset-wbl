@@ -14,6 +14,7 @@ func registerOperations(r chi.Router, a app) {
 	r.Get("/api/v1/assets/export.xlsx", a.exportAssets)
 	r.Post("/api/v1/assets/import.xlsx", a.importAssets)
 	r.Get("/api/v1/reporting/assets", a.reporterAssets)
+	r.Get("/api/v1/locations/tree", a.locationTree)
 	r.Get("/api/v1/maintenance/plans", a.plans)
 	r.Get("/api/v1/maintenance/work-orders", a.workOrders)
 	r.Post("/api/v1/reports/{id}/review", a.reviewReport)
@@ -27,6 +28,11 @@ func registerOperations(r chi.Router, a app) {
 	r.Post("/api/v1/documents", a.createDocument)
 	r.Post("/api/v1/documents/{id}/versions", a.uploadDocument)
 	r.Get("/api/v1/documents/{id}/file", a.downloadDocument)
+	r.Get("/api/v1/depreciation/policies", a.depreciationPolicies)
+	r.Post("/api/v1/depreciation/policies", a.createDepreciationPolicy)
+	r.Post("/api/v1/depreciation/periods", a.generateDepreciation)
+	r.Get("/api/v1/depreciation/periods", a.depreciationPeriods)
+	r.Post("/api/v1/depreciation/periods/{id}/lock", a.lockDepreciation)
 }
 
 func (a app) reporterAssets(w http.ResponseWriter, r *http.Request) {

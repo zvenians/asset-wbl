@@ -1,7 +1,44 @@
-@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,600,700&f[]=switzer@400,500,600,700&display=swap');
+@import "@fontsource-variable/geist/wght.css";
+@import "@fontsource-variable/geist-mono/wght.css";
 @import "tailwindcss";
+
 @theme {
-  --color-canvas:#F4F2EC;--color-surface-soft:#FCFBF8;--color-surface:#FFFFFF;--color-line:#E3E0D7;--color-ink:#242820;--color-muted:#62675E;--color-primary:#526247;--color-primary-hover:#3F5136;--color-success:#28634E;--color-warning:#845918;--color-danger:#A2382D;--color-info:#355C76;
-  --font-display:"Cabinet Grotesk",system-ui,sans-serif;--font-sans:"Switzer",system-ui,sans-serif;
+  --color-canvas: #f4f4f6;
+  --color-surface: #ffffff;
+  --color-surface-soft: #f0eff4;
+  --color-accent-soft: #eae8f4;
+  --color-iris: #8784b6;
+  --color-primary: #5147a8;
+  --color-primary-hover: #433a91;
+  --color-ink: #20212a;
+  --color-muted: #686976;
+  --color-faint: #92939f;
+  --color-line: #e3e3ea;
+  --color-success: #367a5b;
+  --color-warning: #b88737;
+  --color-danger: #c45656;
+  --font-sans: "Geist Variable", Arial, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
 }
-:root{font-family:var(--font-sans);color:var(--color-ink);background:var(--color-canvas);font-synthesis:none}*{box-sizing:border-box}body{margin:0}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.6}:focus-visible{outline:2px solid var(--color-primary);outline-offset:3px}a{color:inherit}h1,h2,h3{font-family:var(--font-display);letter-spacing:-.025em} .tabular{font-variant-numeric:tabular-nums}@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+:root {
+  font-family: var(--font-sans);
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  font-synthesis: none;
+  font-size: 15px;
+  line-height: 1.5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+button, input, select, textarea { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .5; }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+a { color: inherit; }
+h1, h2, h3 { font-family: var(--font-sans); letter-spacing: -.035em; font-weight: 600; }
+.tabular { font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
