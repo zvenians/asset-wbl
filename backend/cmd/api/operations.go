@@ -15,6 +15,8 @@ func registerOperations(r chi.Router, a app) {
 	r.Post("/api/v1/assets/import.xlsx", a.importAssets)
 	r.Get("/api/v1/reporting/assets", a.reporterAssets)
 	r.Get("/api/v1/locations/tree", a.locationTree)
+	r.Get("/api/v1/vehicles/{id}/renewals", a.vehicleRenewals)
+	r.Post("/api/v1/vehicles/{id}/renewals", a.createVehicleRenewal)
 	r.Get("/api/v1/admin/users", a.listUsers)
 	r.Post("/api/v1/admin/users", a.createUser)
 	r.Patch("/api/v1/admin/users/{id}/role", a.changeUserRole)
